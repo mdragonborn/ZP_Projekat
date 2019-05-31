@@ -1,0 +1,5 @@
+RSA
+key usage
+subject alternative name
+inhibit any policy
+extensions rules
