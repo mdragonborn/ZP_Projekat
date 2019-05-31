@@ -1,11 +1,22 @@
 package implementation;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateException;
 import java.util.Enumeration;
 
 import code.GuiException;
 import x509.v3.CodeV3;
 
 public class MyCode extends CodeV3 {
+	
+	private final String keystore_file = "local_keystore.p12"; 
+	private final String keystore_pass = "qwe123";
 
 	public MyCode(boolean[] algorithm_conf, boolean[] extensions_conf, boolean extensions_rules) throws GuiException {
 		super(algorithm_conf, extensions_conf, extensions_rules);
@@ -86,8 +97,56 @@ public class MyCode extends CodeV3 {
 
 	@Override
 	public Enumeration<String> loadLocalKeystore() {
-		// TODO Auto-generated method stub
-		return null;
+		KeyStore ks = null;
+		try {
+			ks = KeyStore.getInstance(KeyStore.getDefaultType());
+		} catch (KeyStoreException e) {
+			e.printStackTrace();
+		}
+
+		File file = new File(this.keystore_file);
+		
+		if(!file.exists()) {
+			try {
+				ks.load(null, this.keystore_pass.toCharArray());
+				FileOutputStream os = new FileOutputStream(this.keystore_file);
+				ks.store(os, this.keystore_pass.toCharArray());
+				os.close();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+
+	    FileInputStream fis = null;
+	    try {
+	        fis = new java.io.FileInputStream(this.keystore_file);
+	        ks.load(fis, this.keystore_pass.toCharArray());
+	    }
+	    catch(java.io.EOFException e) {
+	    	try {
+				ks.load(null, this.keystore_pass.toCharArray());
+			} catch (NoSuchAlgorithmException | CertificateException | IOException e1) {
+				e1.printStackTrace();
+			}
+	    }
+	    catch (Exception e) {
+			e.printStackTrace();
+		} 
+	    finally {
+	        try {
+				fis.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+	    }
+	    
+	    try {
+			return ks.aliases();
+		} catch (KeyStoreException e) {
+			e.printStackTrace();
+		}
+	    
+	    return null;
 	}
 
 	@Override
