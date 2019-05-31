@@ -157,8 +157,17 @@ public class MyCode extends CodeV3 {
 
 	@Override
 	public void resetLocalKeystore() {
-		// TODO Auto-generated method stub
-
+		KeyStore ks = null;
+		try {
+			ks = KeyStore.getInstance(KeyStore.getDefaultType());
+		
+			ks.load(null, this.keystore_pass.toCharArray());
+			FileOutputStream os = new FileOutputStream(this.keystore_file);
+			ks.store(os, this.keystore_pass.toCharArray());
+			
+		} catch (KeyStoreException | NoSuchAlgorithmException | CertificateException | IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 	@Override
