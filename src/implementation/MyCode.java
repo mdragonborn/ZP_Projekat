@@ -197,8 +197,65 @@ public class MyCode extends CodeV3 {
 
 	@Override
 	public boolean saveKeypair(String arg0) {
-		// TODO Auto-generated method stub
-		return false;
+		Integer keySize = Integer.valueOf(access.getPublicKeyParameter());
+		KeyPairGenerator keyPairGen = null;
+		try {
+			keyPairGen = KeyPairGenerator.getInstance("RSA", "BC");
+			keyPairGen.initialize(new RSAKeyGenParameterSpec(keySize, RSAKeyGenParameterSpec.F4));
+		} catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidAlgorithmParameterException e) {
+			e.printStackTrace();
+			return false;
+		}
+		
+		KeyPair keyPair = keyPairGen.generateKeyPair();
+		
+		String subject = access.getSubject();
+		
+		X509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(
+				 new X500Principal(subject),
+				 BigInteger.valueOf(System.currentTimeMillis())
+				 .multiply(BigInteger.valueOf(10)),
+				 access.getNotBefore(),
+				 access.getNotAfter(),
+				 new X500Principal(subject),
+				 keyPair.getPublic());
+		
+		// Extensions
+	
+		
+		// Save
+		
+		JcaContentSignerBuilder csBuilder = new JcaContentSignerBuilder(
+				access.getPublicKeyDigestAlgorithm());
+
+		ContentSigner signer = null;
+		try {
+			signer = csBuilder.build(keyPair.getPrivate());
+		} catch (OperatorCreationException e) {
+			e.printStackTrace();
+			return false;
+		}
+
+		X509CertificateHolder holder = builder.build(signer);
+		java.security.cert.X509Certificate cert = null;
+		try {
+			cert = new JcaX509CertificateConverter().setProvider("BC")
+					.getCertificate(holder);
+		} catch (CertificateException e) {
+			e.printStackTrace();
+			return false;
+		}
+		
+		try (FileOutputStream os = new FileOutputStream(new File(this.keystore_file))) {
+			keyStore.setCertificateEntry(arg0, cert);
+			keyStore.store(os, this.keystore_pass.toCharArray());
+		} catch (KeyStoreException | IOException | NoSuchAlgorithmException | CertificateException e) {
+			e.printStackTrace();
+			return false;
+		}
+		
+		
+		return true;
 	}
 
 	@Override
