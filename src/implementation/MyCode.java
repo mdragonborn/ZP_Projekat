@@ -255,7 +255,15 @@ public class MyCode extends CodeV3 {
 
 	@Override
 	public boolean removeKeypair(String arg0) {
-		// TODO Auto-generated method stub
+		try {
+			if(this.keyStore.containsAlias(arg0)) {
+				this.keyStore.deleteEntry(arg0);
+				return true;
+			}
+		} catch (KeyStoreException e) {
+			e.printStackTrace();
+		}
+		
 		return false;
 	}
 
