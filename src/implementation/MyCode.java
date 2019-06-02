@@ -5,6 +5,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.Key;
 import java.security.KeyPair;
@@ -17,9 +18,12 @@ import java.security.Security;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateException;
+import java.security.cert.CertificateParsingException;
 import java.security.spec.RSAKeyGenParameterSpec;
+import java.util.Collection;
 import java.util.Date;
 import java.util.Enumeration;
+import java.util.List;
 import java.util.Set;
 
 import javax.security.auth.x500.X500Principal;
@@ -27,6 +31,8 @@ import java.security.cert.X509Certificate;
 
 import org.bouncycastle.asn1.ASN1Encodable;
 import org.bouncycastle.asn1.ASN1Integer;
+import org.bouncycastle.asn1.ASN1OctetString;
+import org.bouncycastle.asn1.DERInteger;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x509.Certificate;
 import org.bouncycastle.asn1.x509.Extension;
@@ -43,9 +49,9 @@ import org.bouncycastle.jce.X509Principal;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
-
 import code.GuiException;
 import gui.Constants;
+
 import x509.v3.CodeV3;
 
 public class MyCode extends CodeV3 {
@@ -154,6 +160,42 @@ public class MyCode extends CodeV3 {
 		access.setVersion(2);
 		
 		// TODO Show extensions
+		Set<String> critSet = cert.getCriticalExtensionOIDs();
+
+		if (critSet != null && !critSet.isEmpty()) {
+			System.out.println("Set of critical extensions: ");
+			for (String oid : critSet) {
+				System.out.println(oid);
+				
+				// TODO Inhibit any policy
+				if (oid.equals("2.5.29.54")) {
+					access.setCritical(Constants.IAP, true);
+					cert.getExtensionValue(oid);
+				}
+				
+				if(oid.equals("2.5.29.15")) {
+					access.setKeyUsage(cert.getKeyUsage());
+				}
+				
+				if(oid.equals("2.5.29.17")) {
+					try {
+						StringBuilder builder = new StringBuilder();
+						Collection<List<?>> subjectAlternativeNames = cert.getSubjectAlternativeNames();
+						for(List name: subjectAlternativeNames) {
+							builder.append(name.get(1));
+							builder.append(",");
+						}
+						builder.delete(builder.length()-1, builder.length());
+						System.out.println(builder.toString());
+						access.setAlternativeName(Constants.SAN, builder.toString());
+						access.setCritical(Constants.SAN, true);
+					} catch (CertificateParsingException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				}
+			}
+		}
 		
 		return 0;
 	}
@@ -277,9 +319,9 @@ public class MyCode extends CodeV3 {
 			}
 		}
 		
-		// Subject alternative name
+		// TODO Subject alternative name
 		if(access.isCritical(Constants.SAN)) {
-			String[] options = {"othername", "rfc822name", "dnsname", "x400address", "directoryname", "edipartyname", "uniformresourceidentifier", "ipaddress", "registeredid"};
+			String[] options = {"othername", "rfc822name", "dnsname", "x400address", "directoryname", "edipartyname", "uriname", "ipaddress", "registeredid"};
 			String[] altNames = access.getAlternativeName(Constants.SAN);
 			GeneralName[] names = new GeneralName[altNames.length];
 			int iter = 0;
@@ -303,7 +345,6 @@ public class MyCode extends CodeV3 {
 			try {
 				builder.addExtension(Extension.subjectAlternativeName, true, new GeneralNames(names));
 			} catch (CertIOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 				return false;
 			}
@@ -316,7 +357,6 @@ public class MyCode extends CodeV3 {
 			try {
 				builder.addExtension(Extension.inhibitAnyPolicy, true, skipCertsInteger);
 			} catch (CertIOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 				return false;
 			}
