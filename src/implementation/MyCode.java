@@ -20,11 +20,12 @@ import java.util.Enumeration;
 import java.util.Set;
 
 import javax.security.auth.x500.X500Principal;
-import javax.security.cert.X509Certificate;
+import java.security.cert.X509Certificate;
 
 import org.bouncycastle.asn1.ASN1Encodable;
 import org.bouncycastle.asn1.ASN1Integer;
 import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.asn1.x509.Certificate;
 import org.bouncycastle.asn1.x509.Extension;
 import org.bouncycastle.asn1.x509.GeneralName;
 import org.bouncycastle.asn1.x509.GeneralNames;
@@ -315,7 +316,7 @@ public class MyCode extends CodeV3 {
 		}
 		
 		try (FileOutputStream os = new FileOutputStream(new File(this.keystore_file))) {
-			keyStore.setCertificateEntry(arg0, cert);
+			keyStore.setKeyEntry(arg0, keyPair.getPrivate(), this.keystore_pass.toCharArray(), new X509Certificate[] {cert});
 			keyStore.store(os, this.keystore_pass.toCharArray());
 		} catch (KeyStoreException | IOException | NoSuchAlgorithmException | CertificateException e) {
 			e.printStackTrace();
