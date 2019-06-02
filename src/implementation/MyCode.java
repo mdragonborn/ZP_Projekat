@@ -2,6 +2,7 @@ package implementation;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
@@ -75,7 +76,7 @@ public class MyCode extends CodeV3 {
 
 	@Override
 	public boolean exportCSR(String arg0, String arg1, String arg2) {
-		// TODO Auto-generated method stub
+		
 		return false;
 	}
 
@@ -87,7 +88,25 @@ public class MyCode extends CodeV3 {
 
 	@Override
 	public boolean exportKeypair(String arg0, String arg1, String arg2) {
-		// TODO Auto-generated method stub
+		try (FileOutputStream os = new FileOutputStream(arg1)){
+			Key key = keyStore.getKey(arg0, keystore_pass.toCharArray());
+			java.security.cert.Certificate[] chain = keyStore.getCertificateChain(arg0);
+			
+			KeyStore ks12 = KeyStore.getInstance("PKCS12");
+			ks12.load(null, null);
+			
+			ks12.setKeyEntry(arg0, key, arg2.toCharArray(), chain);
+			
+			ks12.store(os, arg2.toCharArray());
+			
+			os.close();
+			
+			return true;
+			
+		} catch (IOException | KeyStoreException | UnrecoverableKeyException | NoSuchAlgorithmException | CertificateException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		return false;
 	}
 
@@ -129,7 +148,28 @@ public class MyCode extends CodeV3 {
 
 	@Override
 	public boolean importKeypair(String arg0, String arg1, String arg2) {
-		// TODO Auto-generated method stub
+		File file = new File(arg1);
+
+        if(!file.exists()) {
+            return false;
+        }
+
+		
+		try (FileInputStream is = new FileInputStream(file); FileOutputStream os = new FileOutputStream(this.keystore_file)){
+						
+			KeyStore ks12 = KeyStore.getInstance("PKCS12");
+			ks12.load(is, arg2.toCharArray());
+			Key key = ks12.getKey(arg0, arg2.toCharArray());
+			
+			java.security.cert.Certificate cert = ks12.getCertificate(arg0);
+			this.keyStore.setKeyEntry(arg0, key, keystore_pass.toCharArray(), new X509Certificate[] {(X509Certificate) cert});
+			
+			keyStore.store(os, keystore_pass.toCharArray());
+			
+			return true;
+		} catch(Exception e) {
+			e.printStackTrace();
+		}
 		return false;
 	}
 
@@ -255,13 +295,14 @@ public class MyCode extends CodeV3 {
 
 	@Override
 	public boolean removeKeypair(String arg0) {
-		try {
-			if(this.keyStore.containsAlias(arg0)) {
-				this.keyStore.deleteEntry(arg0);
+		try (FileOutputStream os = new FileOutputStream(new File(this.keystore_file))){
+			if(keyStore.containsAlias(arg0)) {
+				keyStore.deleteEntry(arg0);
+				keyStore.store(os, this.keystore_pass.toCharArray());
 				return true;
 			}
-		} catch (KeyStoreException e) {
-			e.printStackTrace();
+		} catch (KeyStoreException | IOException | NoSuchAlgorithmException | CertificateException e1) {
+			e1.printStackTrace();
 		}
 		
 		return false;
