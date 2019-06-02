@@ -6,6 +6,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.security.InvalidAlgorithmParameterException;
+import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
@@ -13,6 +14,8 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.Security;
+import java.security.UnrecoverableKeyException;
+import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateException;
 import java.security.spec.RSAKeyGenParameterSpec;
 import java.util.Date;
@@ -34,6 +37,7 @@ import org.bouncycastle.cert.CertIOException;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
+import org.bouncycastle.cert.jcajce.JcaX509CertificateHolder;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
 import org.bouncycastle.jce.X509Principal;
 import org.bouncycastle.operator.ContentSigner;
@@ -125,7 +129,32 @@ public class MyCode extends CodeV3 {
 
 	@Override
 	public int loadKeypair(String arg0) {
-		// TODO Auto-generated method stub
+		X509Certificate cert = null;
+		try {
+			cert = (X509Certificate) this.keyStore.getCertificate(arg0);
+		} catch (KeyStoreException e) {
+			e.printStackTrace();
+			return -1;
+		}
+		
+		JcaX509CertificateHolder h;
+		try {
+			h = new JcaX509CertificateHolder(cert);
+		} catch (CertificateEncodingException e) {
+			e.printStackTrace();
+			return -1;
+		}
+		
+		access.setSubject(h.getSubject().toString());
+		access.setIssuer(h.getIssuer().toString());
+		access.setSerialNumber(cert.getSerialNumber().toString());
+		access.setNotAfter(cert.getNotAfter());
+		access.setNotBefore(cert.getNotBefore());
+		access.setPublicKeyAlgorithm(cert.getSigAlgName());
+		access.setVersion(2);
+		
+		// TODO Show extensions
+		
 		return 0;
 	}
 
@@ -207,6 +236,7 @@ public class MyCode extends CodeV3 {
 	@Override
 	public boolean saveKeypair(String arg0) {
 		Integer keySize = Integer.valueOf(access.getPublicKeyParameter());
+		System.out.println(access.getPublicKeyParameter());
 		KeyPairGenerator keyPairGen = null;
 		try {
 			keyPairGen = KeyPairGenerator.getInstance("RSA", "BC");
