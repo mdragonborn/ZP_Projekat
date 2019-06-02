@@ -17,11 +17,19 @@ import java.security.cert.CertificateException;
 import java.security.spec.RSAKeyGenParameterSpec;
 import java.util.Date;
 import java.util.Enumeration;
+import java.util.Set;
 
 import javax.security.auth.x500.X500Principal;
 import javax.security.cert.X509Certificate;
 
+import org.bouncycastle.asn1.ASN1Encodable;
+import org.bouncycastle.asn1.ASN1Integer;
 import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.asn1.x509.Extension;
+import org.bouncycastle.asn1.x509.GeneralName;
+import org.bouncycastle.asn1.x509.GeneralNames;
+import org.bouncycastle.asn1.x509.KeyUsage;
+import org.bouncycastle.cert.CertIOException;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
@@ -221,7 +229,67 @@ public class MyCode extends CodeV3 {
 				 keyPair.getPublic());
 		
 		// Extensions
-	
+		
+		// Key usage
+		if(access.isCritical(Constants.KU)) { 
+			boolean [] usage = access.getKeyUsage();
+			int usageValue = 0;
+			for(int i=0; i<9; i++) {
+				if(usage[i])
+					usageValue |= i;
+			}
+			KeyUsage extension = new KeyUsage(usageValue);
+			try {
+				builder.addExtension(Extension.keyUsage, true, extension);
+			} catch (CertIOException e) {
+				e.printStackTrace();
+			}
+		}
+		
+		// Subject alternative name
+		if(access.isCritical(Constants.SAN)) {
+			String[] options = {"othername", "rfc822name", "dnsname", "x400address", "directoryname", "edipartyname", "uniformresourceidentifier", "ipaddress", "registeredid"};
+			String[] altNames = access.getAlternativeName(Constants.SAN);
+			GeneralName[] names = new GeneralName[altNames.length];
+			int iter = 0;
+			for(String name: altNames) {
+				String[] split = name.split("=");
+				split[0] = split[0].toLowerCase();
+				int i;
+				for(i=0; i< options.length; i++) {
+					if (split[0].equals(options[i])) {
+						System.out.println(i + " " + split[1]);
+						names[iter] = new GeneralName(i, name);
+						iter++;
+						break;
+					}
+				}
+				if (i==9) {
+					access.reportError("Bad subject alternative name type.");
+					return false;
+				}
+			}
+			try {
+				builder.addExtension(Extension.subjectAlternativeName, true, new GeneralNames(names));
+			} catch (CertIOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+				return false;
+			}
+		}
+		
+		
+		// Inhibit any policy
+		if(access.isCritical(Constants.IAP) && access.getInhibitAnyPolicy()) {
+			ASN1Integer skipCertsInteger = new ASN1Integer(new BigInteger(access.getSkipCerts()));
+			try {
+				builder.addExtension(Extension.inhibitAnyPolicy, true, skipCertsInteger);
+			} catch (CertIOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+				return false;
+			}
+		}
 		
 		// Save
 		
