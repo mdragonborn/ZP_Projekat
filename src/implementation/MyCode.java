@@ -356,13 +356,25 @@ public class MyCode extends CodeV3 {
 		if(access.isCritical(Constants.KU)) { 
 			boolean [] usage = access.getKeyUsage();
 			int usageValue = 0;
+			
 			for(int i=0; i<9; i++) {
-				if(usage[i])
-					usageValue |= i;
+				if(usage[i]) {
+					switch(i){
+				    	case 0: usageValue |= KeyUsage.digitalSignature; break;
+				    	case 1: usageValue |= KeyUsage.nonRepudiation; break;
+				    	case 2: usageValue |= KeyUsage.keyEncipherment; break;
+				    	case 3: usageValue |= KeyUsage.dataEncipherment; break;
+				    	case 4: usageValue |= KeyUsage.keyAgreement; break;
+				    	case 5: usageValue |= KeyUsage.keyCertSign; break;
+				    	case 6: usageValue |= KeyUsage.cRLSign; break;
+				    	case 7: usageValue |= KeyUsage.encipherOnly; break;
+				    	case 8: usageValue |= KeyUsage.decipherOnly; break;
+			    	}
+				}
 			}
 			KeyUsage extension = new KeyUsage(usageValue);
 			try {
-				builder.addExtension(Extension.keyUsage, true, extension);
+				builder.addExtension(Extension.keyUsage, true, new KeyUsage(usageValue));
 			} catch (CertIOException e) {
 				e.printStackTrace();
 			}
