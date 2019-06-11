@@ -29,14 +29,18 @@ import java.util.Set;
 
 import javax.security.auth.x500.X500Principal;
 import java.security.cert.X509Certificate;
+import java.security.interfaces.RSAKey;
 
 import org.bouncycastle.asn1.ASN1Encodable;
 import org.bouncycastle.asn1.ASN1Integer;
+import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.ASN1OctetString;
 import org.bouncycastle.asn1.DERInteger;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x509.Certificate;
 import org.bouncycastle.asn1.x509.Extension;
+import org.bouncycastle.asn1.x509.Extensions;
+import org.bouncycastle.asn1.x509.ExtensionsGenerator;
 import org.bouncycastle.asn1.x509.GeneralName;
 import org.bouncycastle.asn1.x509.GeneralNames;
 import org.bouncycastle.asn1.x509.KeyUsage;
@@ -70,7 +74,14 @@ public class MyCode extends CodeV3 {
 
 	@Override
 	public boolean canSign(String arg0) {
-		// TODO Auto-generated method stub
+		try {
+			X509Certificate cert = (X509Certificate) keyStore.getCertificate(arg0);
+			if(cert.getKeyUsage()!=null && cert.getKeyUsage()[5])
+				return true;
+		} catch (KeyStoreException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		return false;
 	}
 
@@ -112,19 +123,37 @@ public class MyCode extends CodeV3 {
 
 	@Override
 	public String getCertPublicKeyAlgorithm(String arg0) {
-		// TODO Auto-generated method stub
+		try
+		{
+			X509Certificate certificate = (X509Certificate) keyStore.getCertificate(arg0);
+			return certificate.getPublicKey().getAlgorithm();
+		}catch (Exception e) {
+			e.printStackTrace();
+		}
 		return null;
+		
 	}
 
 	@Override
 	public String getCertPublicKeyParameter(String arg0) {
-		// TODO Auto-generated method stub
-		return null;
+		try {
+			return Integer.toString(((RSAKey)(keyStore.getCertificate(arg0).getPublicKey())).getModulus().bitLength());
+		} catch (KeyStoreException e) {
+			// TODO: handle exception
+			e.printStackTrace();
+			return null;
+		}
 	}
 
 	@Override
 	public String getSubjectInfo(String arg0) {
-		// TODO Auto-generated method stub
+		try  {
+			X509Certificate certificate = (X509Certificate) keyStore.getCertificate(arg0);
+			JcaX509CertificateHolder holder = new JcaX509CertificateHolder(certificate);
+			return holder.getSubject().toString();
+		} catch (CertificateEncodingException | KeyStoreException e) {
+			e.printStackTrace();
+		}
 		return null;
 	}
 
