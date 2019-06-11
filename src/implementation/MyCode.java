@@ -213,8 +213,22 @@ public class MyCode extends CodeV3 {
 	@Override
 	public int loadKeypair(String arg0) {
 		X509Certificate cert = null;
+		int ret = 0;
 		try {
 			cert = (X509Certificate) this.keyStore.getCertificate(arg0);
+			if(cert.getKeyUsage() != null){
+				if(cert.getKeyUsage()[5] == true)
+					ret = 2;
+				}
+				else {
+					try {
+						// PROVERI
+						cert.verify(cert.getPublicKey(), new BouncyCastleProvider());
+						ret = 0;
+					} catch(Exception e) {
+						ret = 1;
+					}
+				}
 		} catch (KeyStoreException e) {
 			e.printStackTrace();
 			return -1;
@@ -274,7 +288,7 @@ public class MyCode extends CodeV3 {
 			}
 		}
 		
-		return 0;
+		return ret;
 	}
 
 	@Override
