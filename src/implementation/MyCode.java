@@ -91,9 +91,17 @@ public class MyCode extends CodeV3 {
 		return false;
 	}
 
-	@Override
+	@Override // file, keypair, encoding, format
 	public boolean exportCertificate(String arg0, String arg1, int arg2, int arg3) {
-		// TODO Auto-generated method stub
+//		try (FileOutputStream os = new FileOutputStream(arg0)){
+//			if(!keyStore.containsAlias(arg0)) {
+//				access.reportError("Alias do");
+//			}
+//			Certificate cert = 
+//		} catch (IOException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
 		return false;
 	}
 
