@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -15,6 +16,7 @@ import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
+import java.security.PrivateKey;
 import java.security.Security;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateEncodingException;
@@ -36,6 +38,7 @@ import org.bouncycastle.asn1.ASN1Integer;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.ASN1OctetString;
 import org.bouncycastle.asn1.DERInteger;
+import org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x509.Certificate;
 import org.bouncycastle.asn1.x509.Extension;
@@ -51,12 +54,18 @@ import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateHolder;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
 import org.bouncycastle.jce.X509Principal;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.openssl.jcajce.JcaPEMWriter;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
+import org.bouncycastle.pkcs.PKCS10CertificationRequest;
+import org.bouncycastle.pkcs.PKCS10CertificationRequestBuilder;
+import org.bouncycastle.pkcs.jcajce.JcaPKCS10CertificationRequestBuilder;
+
 import code.GuiException;
 import gui.Constants;
-
+import gui.GuiInterfaceV1;
 import x509.v3.CodeV3;
 
 public class MyCode extends CodeV3 {
@@ -85,9 +94,36 @@ public class MyCode extends CodeV3 {
 		return false;
 	}
 
-	@Override
+	@Override //file, keypairname, algorithm
 	public boolean exportCSR(String arg0, String arg1, String arg2) {
-		
+		try {
+			X509Certificate cert = (X509Certificate) keyStore.getCertificate(arg1);
+			
+			ExtensionsGenerator extensionsGen = new ExtensionsGenerator();
+			X509CertificateHolder certHolder = new JcaX509CertificateHolder(cert);
+			Extensions ext = certHolder.getExtensions();
+			if(ext!=null) {
+				Enumeration oids = ext.oids();			
+				for(Object oid = oids.nextElement(); oids.hasMoreElements(); oid = oids.nextElement()) {
+					Extension e = ext.getExtension((ASN1ObjectIdentifier)(oid));
+					extensionsGen.addExtension(e);
+				}
+			}
+			X500Principal subject = cert.getSubjectX500Principal();
+			ContentSigner signGen = new JcaContentSignerBuilder(cert.getSigAlgName()).build((PrivateKey)keyStore.getKey(arg1, keystore_pass.toCharArray()));
+			PKCS10CertificationRequestBuilder builder = new JcaPKCS10CertificationRequestBuilder(subject, cert.getPublicKey());
+			builder.addAttribute(PKCSObjectIdentifiers.pkcs_9_at_extensionRequest, extensionsGen.generate());
+			
+			PKCS10CertificationRequest csr = builder.build(signGen);
+			
+			JcaPEMWriter writer = new JcaPEMWriter(new FileWriter(new File(arg0)));
+			writer.writeObject(csr);
+			writer.close();
+			return true;
+		} catch (KeyStoreException | CertificateEncodingException | UnrecoverableKeyException | OperatorCreationException | NoSuchAlgorithmException | IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		return false;
 	}
 
@@ -95,7 +131,7 @@ public class MyCode extends CodeV3 {
 	public boolean exportCertificate(String arg0, String arg1, int arg2, int arg3) {
 //		try (FileOutputStream os = new FileOutputStream(arg0)){
 //			if(!keyStore.containsAlias(arg0)) {
-//				access.reportError("Alias do");
+//				GuiInterfaceV1.reportError("Alias do");
 //			}
 //			Certificate cert = 
 //		} catch (IOException e) {
