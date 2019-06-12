@@ -324,7 +324,7 @@ public class MyCode extends CodeV3 {
 				return null;
 			}
 			
-			System.out.print(currentCsr.getSignatureAlgorithm().getAlgorithm().toString());
+
 			String alg = null;
 			switch(currentCsr.getSignatureAlgorithm().getAlgorithm().toString()) {
 			case "1.2.840.113549.1.1.5":
@@ -426,7 +426,6 @@ public class MyCode extends CodeV3 {
 
 		if (critSet != null && !critSet.isEmpty()) {
 			for (String oid : critSet) {
-				System.out.println(oid);
 				
 				// TODO Inhibit any policy
 				if (oid.equals("2.5.29.54")) {
@@ -447,7 +446,6 @@ public class MyCode extends CodeV3 {
 							builder.append(",");
 						}
 						builder.delete(builder.length()-1, builder.length());
-						System.out.println(builder.toString());
 						access.setAlternativeName(Constants.SAN, builder.toString());
 						access.setCritical(Constants.SAN, true);
 					} catch (CertificateParsingException e) {
@@ -548,7 +546,6 @@ public class MyCode extends CodeV3 {
 	@Override
 	public boolean saveKeypair(String arg0) {
 		Integer keySize = Integer.valueOf(access.getPublicKeyParameter());
-		System.out.println(access.getPublicKeyParameter());
 		KeyPairGenerator keyPairGen = null;
 		try {
 			keyPairGen = KeyPairGenerator.getInstance("RSA", "BC");
@@ -613,7 +610,6 @@ public class MyCode extends CodeV3 {
 				int i;
 				for(i=0; i< options.length; i++) {
 					if (split[0].equals(options[i])) {
-						System.out.println(i + " " + split[1]);
 						names[iter] = new GeneralName(i, name);
 						iter++;
 						break;
