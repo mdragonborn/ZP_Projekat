@@ -350,8 +350,20 @@ public class MyCode extends CodeV3 {
 
 	@Override
 	public boolean importCertificate(String arg0, String arg1) {
-		// TODO Auto-generated method stub
-		return false;
+		try (FileInputStream is = new FileInputStream(arg0); FileOutputStream os = new FileOutputStream(keystore_file)){
+			CertificateFactory certFactory = CertificateFactory.getInstance("X.509");
+			List<X509Certificate> list = new ArrayList<X509Certificate>();
+			while(is.available() > 0) {
+				list.add((X509Certificate) certFactory.generateCertificate(is));
+			}
+			keyStore.setCertificateEntry(arg1, list.get(0));
+			keyStore.store(os, keystore_pass.toCharArray());
+		} catch (IOException | CertificateException | KeyStoreException | NoSuchAlgorithmException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return false;
+		}
+		return true;
 	}
 
 	@Override
