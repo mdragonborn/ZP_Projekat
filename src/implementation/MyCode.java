@@ -1,5 +1,6 @@
 package implementation;
 
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -7,6 +8,7 @@ import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.security.InvalidAlgorithmParameterException;
@@ -84,6 +86,7 @@ import org.bouncycastle.pkcs.jcajce.JcaPKCS10CertificationRequestBuilder;
 import org.bouncycastle.util.CollectionStore;
 import org.bouncycastle.util.Selector;
 import org.bouncycastle.util.Store;
+import org.bouncycastle.util.io.pem.PemObject;
 
 import code.GuiException;
 import gui.Constants;
@@ -153,16 +156,38 @@ public class MyCode extends CodeV3 {
 
 	@Override // file, keypair, encoding, format
 	public boolean exportCertificate(String arg0, String arg1, int arg2, int arg3) {
-//		try (FileOutputStream os = new FileOutputStream(arg0)){
-//			if(!keyStore.containsAlias(arg0)) {
-//				GuiInterfaceV1.reportError("Alias do");
-//			}
-//			Certificate cert = 
-//		} catch (IOException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
-		return false;
+		try (FileOutputStream os = new FileOutputStream(arg0)){
+			if(!keyStore.containsAlias(arg1)) {
+				GuiInterfaceV1.reportError("Key doesn't exist.");
+				return false;
+			}
+			java.security.cert.Certificate cert = keyStore.getCertificate(arg1);
+			if (arg2 == gui.Constants.PEM) {
+				OutputStreamWriter osWriter = new OutputStreamWriter(os);
+				JcaPEMWriter writer = new JcaPEMWriter(osWriter);
+				if (arg3 == 0) {
+					writer.writeObject(cert);
+				}
+				else {
+					java.security.cert.Certificate[] chain = keyStore.getCertificateChain(arg1);
+					for (java.security.cert.Certificate c : chain) {
+                        writer.writeObject(new PemObject("CERTIFICATE", c.getEncoded()));
+                    }
+				}
+				writer.close();
+				osWriter.close();
+			}
+			else {
+				DataOutputStream datastream = new DataOutputStream(os);
+				datastream.write(cert.getEncoded());
+				datastream.close();
+			}
+		} catch (IOException | KeyStoreException | CertificateEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return false;
+		}
+		return true;
 	}
 
 	@Override
