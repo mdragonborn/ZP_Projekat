@@ -6,9 +6,11 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -17,12 +19,14 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.Security;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateParsingException;
 import java.security.spec.RSAKeyGenParameterSpec;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.Enumeration;
@@ -39,6 +43,7 @@ import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.ASN1OctetString;
 import org.bouncycastle.asn1.DERInteger;
 import org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers;
+import org.bouncycastle.asn1.x500.RDN;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x509.Certificate;
 import org.bouncycastle.asn1.x509.Extension;
@@ -53,26 +58,39 @@ import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateHolder;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
+import org.bouncycastle.cms.CMSException;
+import org.bouncycastle.cms.CMSProcessableByteArray;
+import org.bouncycastle.cms.CMSSignedData;
+import org.bouncycastle.cms.CMSSignedDataGenerator;
+import org.bouncycastle.cms.CMSTypedData;
 import org.bouncycastle.jce.X509Principal;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.openssl.jcajce.JcaPEMWriter;
 import org.bouncycastle.operator.ContentSigner;
+import org.bouncycastle.operator.ContentVerifierProvider;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
+import org.bouncycastle.operator.jcajce.JcaContentVerifierProviderBuilder;
 import org.bouncycastle.pkcs.PKCS10CertificationRequest;
 import org.bouncycastle.pkcs.PKCS10CertificationRequestBuilder;
+import org.bouncycastle.pkcs.PKCSException;
+import org.bouncycastle.pkcs.jcajce.JcaPKCS10CertificationRequest;
 import org.bouncycastle.pkcs.jcajce.JcaPKCS10CertificationRequestBuilder;
+import org.bouncycastle.util.CollectionStore;
+import org.bouncycastle.util.Store;
 
 import code.GuiException;
 import gui.Constants;
 import gui.GuiInterfaceV1;
 import x509.v3.CodeV3;
+import x509.v3.GuiV3;
 
 public class MyCode extends CodeV3 {
 	
 	private final String keystore_file = "local_keystore.p12"; 
 	private final String keystore_pass = "qwe123";
-	
+	private PKCS10CertificationRequest currentCsr = null;
 	private KeyStore keyStore;
 
 	public MyCode(boolean[] algorithm_conf, boolean[] extensions_conf, boolean extensions_rules) throws GuiException {
@@ -103,6 +121,7 @@ public class MyCode extends CodeV3 {
 			X509CertificateHolder certHolder = new JcaX509CertificateHolder(cert);
 			Extensions ext = certHolder.getExtensions();
 			if(ext!=null) {
+				// TODO ne kopiraju se ekstenzije
 				Enumeration oids = ext.oids();			
 				for(Object oid = oids.nextElement(); oids.hasMoreElements(); oid = oids.nextElement()) {
 					Extension e = ext.getExtension((ASN1ObjectIdentifier)(oid));
@@ -209,7 +228,40 @@ public class MyCode extends CodeV3 {
 
 	@Override
 	public String importCSR(String arg0) {
-		// TODO Auto-generated method stub
+		try (FileInputStream is = new FileInputStream(new File(arg0))) {
+			InputStreamReader reader = new InputStreamReader(is);
+			PEMParser pr = new PEMParser(reader);
+			
+			currentCsr = (PKCS10CertificationRequest)pr.readObject();
+			
+			ContentVerifierProvider provider = new JcaContentVerifierProviderBuilder().build(currentCsr.getSubjectPublicKeyInfo());
+			if(!currentCsr.isSignatureValid(provider)) {
+				currentCsr = null;
+				GuiV3.reportError("Not verified");
+				return null;
+			}
+			
+			System.out.print(currentCsr.getSignatureAlgorithm().getAlgorithm().toString());
+			String alg = null;
+			switch(currentCsr.getSignatureAlgorithm().getAlgorithm().toString()) {
+			case "1.2.840.113549.1.1.5":
+				alg = "SHA1withRSA"; break;
+			case "1.2.840.113549.1.1.11":
+				alg = "SHA256withRSA"; break;
+			case "1.2.840.113549.1.1.12":
+				alg = "SHA384withRSA"; break;
+			case "1.2.840.113549.1.1.13":
+				alg = "SHA512withRSA"; break;
+			default:
+				return null;
+			}
+			
+			return currentCsr.getSubject().toString()+",SA=" + alg;
+			
+		} catch (IOException | PKCSException | OperatorCreationException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		return null;
 	}
 
@@ -290,7 +342,6 @@ public class MyCode extends CodeV3 {
 		Set<String> critSet = cert.getCriticalExtensionOIDs();
 
 		if (critSet != null && !critSet.isEmpty()) {
-			System.out.println("Set of critical extensions: ");
 			for (String oid : critSet) {
 				System.out.println(oid);
 				
