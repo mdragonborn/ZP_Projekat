@@ -596,9 +596,51 @@ public class MyCode extends CodeV3 {
 		return true;
 	}
 
-	@Override
+	@Override // file, keypair, algorithm
 	public boolean signCSR(String arg0, String arg1, String arg2) {
-		// TODO Auto-generated method stub
+		try {
+			ContentSigner cs = new JcaContentSignerBuilder(arg2).build((PrivateKey)keyStore.getKey(arg1, keystore_pass.toCharArray()));
+			X500Name issuerName = new JcaX509CertificateHolder((X509Certificate) keyStore.getCertificate(arg1)).getSubject();
+			BigInteger serial = new BigInteger(access.getSerialNumber());
+			Date notBefore = access.getNotBefore();
+			Date notAfter = access.getNotAfter();
+			X500Name subject = currentCsr.getSubject();
+            PublicKey publicKey = new JcaPKCS10CertificationRequest(currentCsr).setProvider(new BouncyCastleProvider()).getPublicKey();
+
+			JcaX509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(issuerName, serial, notBefore, notAfter, subject, publicKey);
+			
+			// TODO exkstenzije
+			
+			PrivateKey pk = (PrivateKey) keyStore.getKey(arg1, keystore_pass.toCharArray());
+            ContentSigner signer = new JcaContentSignerBuilder(arg2).setProvider(new BouncyCastleProvider()).build(pk);
+			
+			X509CertificateHolder signed = builder.build(signer);
+			
+			ArrayList<X509CertificateHolder> chain = new ArrayList<>();
+			chain.add(signed);
+			for(java.security.cert.Certificate c: keyStore.getCertificateChain(arg1)) {
+				chain.add(new JcaX509CertificateHolder((X509Certificate)c));
+			}
+			
+			
+			 CMSSignedDataGenerator generator = new CMSSignedDataGenerator();
+	         generator.addCertificates(new CollectionStore<>(chain));
+
+            CMSSignedData signedData = generator.generate(new CMSProcessableByteArray(signed.getEncoded()));
+
+            try (FileOutputStream os = new FileOutputStream(new File(arg0))) {
+                os.write(signedData.getEncoded());
+            }
+
+            return true;
+			
+					
+		} catch (UnrecoverableKeyException | OperatorCreationException | KeyStoreException
+				| NoSuchAlgorithmException | CertificateEncodingException | InvalidKeyException | CMSException | IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 		return false;
 	}
 
