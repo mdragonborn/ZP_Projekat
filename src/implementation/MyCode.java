@@ -24,6 +24,7 @@ import java.security.Security;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
 import java.security.cert.CertificateParsingException;
 import java.security.spec.RSAKeyGenParameterSpec;
 import java.util.ArrayList;
@@ -63,6 +64,9 @@ import org.bouncycastle.cms.CMSProcessableByteArray;
 import org.bouncycastle.cms.CMSSignedData;
 import org.bouncycastle.cms.CMSSignedDataGenerator;
 import org.bouncycastle.cms.CMSTypedData;
+import org.bouncycastle.cms.SignerId;
+import org.bouncycastle.cms.SignerInformation;
+import org.bouncycastle.cms.jcajce.JcaSimpleSignerInfoVerifierBuilder;
 import org.bouncycastle.jce.X509Principal;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.openssl.PEMParser;
@@ -78,6 +82,7 @@ import org.bouncycastle.pkcs.PKCSException;
 import org.bouncycastle.pkcs.jcajce.JcaPKCS10CertificationRequest;
 import org.bouncycastle.pkcs.jcajce.JcaPKCS10CertificationRequestBuilder;
 import org.bouncycastle.util.CollectionStore;
+import org.bouncycastle.util.Selector;
 import org.bouncycastle.util.Store;
 
 import code.GuiException;
@@ -220,10 +225,62 @@ public class MyCode extends CodeV3 {
 		return null;
 	}
 
-	@Override
+	@Override //file, keypair
 	public boolean importCAReply(String arg0, String arg1) {
-		// TODO Auto-generated method stub
-		return false;
+		try (FileInputStream is = new FileInputStream(arg0)) {
+			X509Certificate cert = (X509Certificate) keyStore.getCertificate(arg1);
+			if (cert == null) {
+				access.reportError("Certificate not found");
+				return false;
+			}
+			
+			PrivateKey pk = (PrivateKey) keyStore.getKey(arg1,  keystore_pass.toCharArray());
+			CMSSignedData signed = new CMSSignedData(is);
+			
+			List<SignerInformation> signers = new ArrayList<SignerInformation>(signed.getSignerInfos().getSigners());
+	        JcaX509CertificateConverter certConverter = new JcaX509CertificateConverter().setProvider(new BouncyCastleProvider());
+
+			for(SignerInformation s: signers) {
+				Collection<X509CertificateHolder> signerHolder = signed.getCertificates().getMatches((Selector<X509CertificateHolder>)s.getSID());
+				if(!signerHolder.stream().findFirst().isPresent()) {
+					access.reportError("Reply invalid.");
+					return false;
+				}
+				
+				X509Certificate currentCert = certConverter.getCertificate(signerHolder.stream().findFirst().get());
+				if(!s.verify(new JcaSimpleSignerInfoVerifierBuilder().build(currentCert))) {
+					access.reportError("Reply invalid.");
+					return false;
+				}
+			}
+			
+			X509CertificateHolder first = signed.getCertificates().getMatches(null)
+					.stream().findFirst().get();
+			X509Certificate firstCert = certConverter.getCertificate(first);
+			
+			if(!cert.getSubjectX500Principal().equals(firstCert.getSubjectX500Principal())) {
+				access.reportError("Reply invalid.");
+				return false;
+			}
+			
+			
+		} catch (KeyStoreException | IOException | UnrecoverableKeyException | NoSuchAlgorithmException | CMSException | CertificateException | OperatorCreationException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return false;
+		}
+		
+		try (FileInputStream is = new FileInputStream(arg0)) {
+			Collection<?> chain = CertificateFactory.getInstance("X.509").generateCertificates(is);
+			Key key = keyStore.getKey(arg1, keystore_pass.toCharArray());
+			java.security.cert.Certificate[] certChain = chain.toArray(new java.security.cert.Certificate[chain.size()]);
+			keyStore.setKeyEntry(arg1, key, keystore_pass.toCharArray(), certChain);
+		}catch(Exception e) {
+			e.printStackTrace();
+			return false;
+		}
+		
+		return true;
 	}
 
 	@Override
