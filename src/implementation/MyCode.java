@@ -270,11 +270,12 @@ public class MyCode extends CodeV3 {
 			return false;
 		}
 		
-		try (FileInputStream is = new FileInputStream(arg0)) {
+		try (FileInputStream is = new FileInputStream(arg0); FileOutputStream os = new FileOutputStream(keystore_file)) {
 			Collection<?> chain = CertificateFactory.getInstance("X.509").generateCertificates(is);
 			Key key = keyStore.getKey(arg1, keystore_pass.toCharArray());
 			java.security.cert.Certificate[] certChain = chain.toArray(new java.security.cert.Certificate[chain.size()]);
 			keyStore.setKeyEntry(arg1, key, keystore_pass.toCharArray(), certChain);
+			keyStore.store(os, keystore_pass.toCharArray());
 		}catch(Exception e) {
 			e.printStackTrace();
 			return false;
