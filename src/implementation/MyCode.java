@@ -423,7 +423,16 @@ public class MyCode extends CodeV3 {
 				// TODO Inhibit any policy
 				if (oid.equals("2.5.29.54")) {
 					access.setCritical(Constants.IAP, true);
-					cert.getExtensionValue(oid);
+					byte[] val = cert.getExtensionValue(oid);
+					if(val!=null) {
+						ASN1Integer skipcerts;
+						try {
+							skipcerts = (ASN1Integer)X509ExtensionUtil.fromExtensionValue(val);
+							access.setSkipCerts(skipcerts.getValue().toString());;
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+					}
 				}
 				
 				if(oid.equals("2.5.29.15")) {
