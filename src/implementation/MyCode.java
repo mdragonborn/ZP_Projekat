@@ -611,7 +611,13 @@ public class MyCode extends CodeV3 {
 				int i;
 				for(i=0; i< options.length; i++) {
 					if (split[0].equals(options[i])) {
-						names[iter] = new GeneralName(i, name);
+						try {
+						names[iter] = new GeneralName(i, split[1]);
+						} catch( java.lang.IllegalArgumentException e) {
+							e.printStackTrace();
+							access.reportError("Bad argument for Subject Alternative Name field "+options[i]);
+							return false;
+						}
 						iter++;
 						break;
 					}
@@ -689,7 +695,61 @@ public class MyCode extends CodeV3 {
 
 			JcaX509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(issuerName, serial, notBefore, notAfter, subject, publicKey);
 			
-			// TODO exkstenzije
+			if(access.isCritical(Constants.KU)) { 
+				boolean [] usage = access.getKeyUsage();
+				int usageValue = 0;
+				
+				for(int i=0; i<9; i++) {
+					if(usage[i]) {
+						switch(i){
+					    	case 0: usageValue |= KeyUsage.digitalSignature; break;
+					    	case 1: usageValue |= KeyUsage.nonRepudiation; break;
+					    	case 2: usageValue |= KeyUsage.keyEncipherment; break;
+					    	case 3: usageValue |= KeyUsage.dataEncipherment; break;
+					    	case 4: usageValue |= KeyUsage.keyAgreement; break;
+					    	case 5: usageValue |= KeyUsage.keyCertSign; break;
+					    	case 6: usageValue |= KeyUsage.cRLSign; break;
+					    	case 7: usageValue |= KeyUsage.encipherOnly; break;
+					    	case 8: usageValue |= KeyUsage.decipherOnly; break;
+				    	}
+					}
+				}
+				KeyUsage extension = new KeyUsage(usageValue);
+				try {
+					builder.addExtension(Extension.keyUsage, true, new KeyUsage(usageValue));
+				} catch (CertIOException e) {
+					e.printStackTrace();
+				}
+			}
+			
+			// TODO Subject alternative name
+			if(access.isCritical(Constants.SAN)) {
+				String[] options = {"othername", "rfc822name", "dnsname", "x400address", "directoryname", "edipartyname", "uriname", "ipaddress", "registeredid"};
+				String[] altNames = access.getAlternativeName(Constants.SAN);
+				GeneralName[] names = new GeneralName[altNames.length];
+				int iter = 0;
+				for(String name: altNames) {
+					String[] split = name.split("=");
+					split[0] = split[0].toLowerCase();
+					int i;
+					for(i=0; i< options.length; i++) {
+						if (split[0].equals(options[i])) {
+							try {
+								names[iter] = new GeneralName(i, split[1]);
+							} catch( java.lang.IllegalArgumentException e) {
+								e.printStackTrace();
+								access.reportError("Bad argument for Subject Alternative Name field "+options[i]);
+								return false;
+							}							iter++;
+							break;
+						}
+					}
+					if (i==9) {
+						access.reportError("Bad subject alternative name type.");
+						return false;
+					}
+				}
+			}
 			
 			PrivateKey pk = (PrivateKey) keyStore.getKey(arg1, keystore_pass.toCharArray());
             ContentSigner signer = new JcaContentSignerBuilder(arg2).setProvider(new BouncyCastleProvider()).build(pk);
