@@ -87,6 +87,7 @@ import org.bouncycastle.util.CollectionStore;
 import org.bouncycastle.util.Selector;
 import org.bouncycastle.util.Store;
 import org.bouncycastle.util.io.pem.PemObject;
+import org.bouncycastle.x509.extension.X509ExtensionUtil;
 
 import code.GuiException;
 import gui.Constants;
@@ -104,7 +105,6 @@ public class MyCode extends CodeV3 {
 	public MyCode(boolean[] algorithm_conf, boolean[] extensions_conf, boolean extensions_rules) throws GuiException {
 		super(algorithm_conf, extensions_conf, extensions_rules);
 		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
-		// TODO Auto-generated constructor stub
 	}
 
 	@Override
@@ -114,7 +114,6 @@ public class MyCode extends CodeV3 {
 			if(cert.getKeyUsage()!=null && cert.getKeyUsage()[5])
 				return true;
 		} catch (KeyStoreException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		return false;
@@ -127,15 +126,6 @@ public class MyCode extends CodeV3 {
 			
 			ExtensionsGenerator extensionsGen = new ExtensionsGenerator();
 			X509CertificateHolder certHolder = new JcaX509CertificateHolder(cert);
-			Extensions ext = certHolder.getExtensions();
-			if(ext!=null) {
-				// TODO ne kopiraju se ekstenzije
-				Enumeration oids = ext.oids();			
-				for(Object oid = oids.nextElement(); oids.hasMoreElements(); oid = oids.nextElement()) {
-					Extension e = ext.getExtension((ASN1ObjectIdentifier)(oid));
-					extensionsGen.addExtension(e);
-				}
-			}
 			X500Principal subject = cert.getSubjectX500Principal();
 			ContentSigner signGen = new JcaContentSignerBuilder(cert.getSigAlgName()).build((PrivateKey)keyStore.getKey(arg1, keystore_pass.toCharArray()));
 			PKCS10CertificationRequestBuilder builder = new JcaPKCS10CertificationRequestBuilder(subject, cert.getPublicKey());
@@ -148,7 +138,6 @@ public class MyCode extends CodeV3 {
 			writer.close();
 			return true;
 		} catch (KeyStoreException | CertificateEncodingException | UnrecoverableKeyException | OperatorCreationException | NoSuchAlgorithmException | IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		return false;
@@ -183,7 +172,6 @@ public class MyCode extends CodeV3 {
 				datastream.close();
 			}
 		} catch (IOException | KeyStoreException | CertificateEncodingException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 			return false;
 		}
@@ -202,13 +190,10 @@ public class MyCode extends CodeV3 {
 			ks12.setKeyEntry(arg0, key, arg2.toCharArray(), chain);
 			
 			ks12.store(os, arg2.toCharArray());
-			
-			os.close();
-			
+						
 			return true;
 			
 		} catch (IOException | KeyStoreException | UnrecoverableKeyException | NoSuchAlgorithmException | CertificateException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		return false;
@@ -232,7 +217,6 @@ public class MyCode extends CodeV3 {
 		try {
 			return Integer.toString(((RSAKey)(keyStore.getCertificate(arg0).getPublicKey())).getModulus().bitLength());
 		} catch (KeyStoreException e) {
-			// TODO: handle exception
 			e.printStackTrace();
 			return null;
 		}
@@ -290,7 +274,6 @@ public class MyCode extends CodeV3 {
 			
 			
 		} catch (KeyStoreException | IOException | UnrecoverableKeyException | NoSuchAlgorithmException | CMSException | CertificateException | OperatorCreationException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 			return false;
 		}
@@ -342,7 +325,6 @@ public class MyCode extends CodeV3 {
 			return currentCsr.getSubject().toString()+",SA=" + alg;
 			
 		} catch (IOException | PKCSException | OperatorCreationException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		return null;
@@ -359,7 +341,6 @@ public class MyCode extends CodeV3 {
 			keyStore.setCertificateEntry(arg1, list.get(0));
 			keyStore.store(os, keystore_pass.toCharArray());
 		} catch (IOException | CertificateException | KeyStoreException | NoSuchAlgorithmException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 			return false;
 		}
@@ -461,7 +442,6 @@ public class MyCode extends CodeV3 {
 						access.setAlternativeName(Constants.SAN, builder.toString());
 						access.setCritical(Constants.SAN, true);
 					} catch (CertificateParsingException e) {
-						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
 				}
@@ -728,7 +708,6 @@ public class MyCode extends CodeV3 {
 					
 		} catch (UnrecoverableKeyException | OperatorCreationException | KeyStoreException
 				| NoSuchAlgorithmException | CertificateEncodingException | InvalidKeyException | CMSException | IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		
